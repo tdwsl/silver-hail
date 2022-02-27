@@ -39,7 +39,7 @@ struct bullet {
 };
 
 struct ring {
-  float x, y, r, r1, r2;
+  float x, y, r, r1, r2, v;
 };
 
 int playerhmap[280000];
@@ -65,6 +65,7 @@ bool controlShooting = false;
 int playerCooldown = 0;
 bool playerDead;
 bool paused = false;
+int difficulty = 1;
 
 void generateMap() {
   /* zero variables */
@@ -75,14 +76,21 @@ void generateMap() {
   playerDead = false;
 
   mapW = 20;
-  mapH = 220;
+  if(difficulty < 7)
+    mapH = difficulty*30;
+  else
+    mapH = 220;
+
   for(int i = 0; i < mapW*mapH; i++)
     map[i] = 0;
 
   /* reset scroll */
-  mapScroll = mapH*32-300;
+  mapScroll = mapH*32-300+640;
 
   int bh = 5;
+  if(difficulty < 4)
+    bh += (4-difficulty)*2;
+
   for(int y = bh; y < mapH; y += bh+rand()%6) {
     int w = 4 + rand()%((mapW/2)-4);
     int wx = rand()%(mapW-w+1);
@@ -91,6 +99,9 @@ void generateMap() {
   }
 
   int bn = mapH/4 + rand()%24;
+  if(difficulty > 3)
+    bn *= 2;
+
   for(int i = 0; i < bn; i++) {
     int xy = rand()%(mapW*mapH);
     if(!map[xy])
@@ -98,6 +109,9 @@ void generateMap() {
   }
 
   int rn = mapH/3;
+  if(difficulty < 5)
+    rn /= (5 - difficulty)*2;
+
   for(int i = 0; i < rn; i++) {
     int w = 5+rand()%3, h = 4+rand()%4;
     int rx = 1+rand()%(mapW-w+1-2), ry = 1+rand()%(mapH-h+1-2);
@@ -123,11 +137,11 @@ void generateMap() {
   }
 
   /* place enemies */
-  numEnemies = 12 + rand()%10;
+  numEnemies = difficulty*2 + rand()%(difficulty+2);
   for(int i = 0; i < numEnemies; i++) {
     int xy;
     for(;;) {
-      xy = 10*mapW + rand()%(mapW*(mapH-20));
+      xy = rand()%(mapW*mapH);
       if(!map[xy])
         break;
     }
@@ -147,10 +161,11 @@ void generateMap() {
 void reset() {
   playerX = 320;
   playerY = 440;
+  difficulty = 1;
   generateMap();
 }
 
-void addRing(float x, float y, float r, float r2) {
+void addRing(float x, float y, float r, float r2, float v) {
   if(numRings >= MAX_RINGS)
     return;
 
@@ -161,6 +176,7 @@ void addRing(float x, float y, float r, float r2) {
   n->y = y;
   n->r1 = r;
   n->r2 = r2;
+  n->v = v;
 }
 
 void addBullet(float x, float y, float a, float v, bool friendly) {
@@ -180,9 +196,9 @@ void addBullet(float x, float y, float a, float v, bool friendly) {
   b->friendly = friendly;
 
   if(friendly)
-    addRing(x, y, 40, 140);
+    addRing(x, y, 40, 140, RING_SPEED);
   else
-    addRing(x, y, 50, 210);
+    addRing(x, y, 50, 210, RING_SPEED);
 }
 
 void drawRect(int x, int y, int w, int h) {
@@ -374,8 +390,8 @@ void scroll(float s) {
 
   /* new level */
   if(mapScroll < FAR_RANGE-640 && numEnemies == 0) {
+    difficulty++;
     generateMap();
-    mapScroll += 640;
   }
 }
 
@@ -483,8 +499,13 @@ void updatePlayer(int diff) {
 
   /* check if player is crushed */
   if(mapXYBlocks(playerX, playerY+mapScroll)) {
-    hitPlayer()	;
-    return;
+    /*hitPlayer();
+    return;*/
+
+    /* smash wall, loud noise */
+    int x = playerX/32, y = (playerY+mapScroll)/32;
+    map[y*mapW+x] = 0;
+    addRing(playerX, playerY, 50, 1500, RING_SPEED*7);
   }
 
   if((controlXV || controlYV) && !controlShooting) {
@@ -645,6 +666,7 @@ void updateBullets(int diff) {
     }
 
     if(mapXYBlocks(b->x, b->y+mapScroll)) {
+      addRing(b->x, b->y, 10, 40, RING_SPEED);
       bullets[i--] = bullets[--numBullets];
       continue;
     }
@@ -665,6 +687,7 @@ void updateBullets(int diff) {
       if(pow(e->x-b->x, 2) + pow(e->y-b->y, 2) < 18*18) {
         //enemies[j--] = enemies[--numEnemies];
         hitEnemy(e);
+        addRing(b->x, b->y, 10, 40, RING_SPEED);
         bullets[i--] = bullets[--numBullets];
         printf("hit!\n");
         break;
@@ -676,7 +699,7 @@ void updateBullets(int diff) {
 void updateRings(int diff) {
   for(int i = 0; i < numRings; i++) {
     struct ring *r = &rings[i];
-    r->r += RING_SPEED*diff;
+    r->r += r->v*diff;
 
     for(int j = 0; j < numEnemies; j++) {
       if(enemies[j].death)
