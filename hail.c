@@ -16,10 +16,15 @@
 #define SCROLL_SPEED 0.04
 #define ENEMY_FOVRANGE 200
 #define MAX_BULLETS 24000
+#define MAX_RINGS 48000
 #define NEAR_RANGE (640+100)
 #define FAR_RANGE (-200)
 #define PLAYER_BULLETSPEED 0.4
 #define ENEMY_DEATHSPEED 0.001
+#define RING_SPEED 0.1
+#define PLAYER_COOLDOWN 340
+#define ENEMY_COOLDOWN 190
+#define ENEMY_BULLETSPEED 0.3
 
 struct enemy {
   float x, y, a;
@@ -33,6 +38,10 @@ struct bullet {
   bool friendly;
 };
 
+struct ring {
+  float x, y, r, r1, r2;
+};
+
 int playerhmap[280000];
 
 struct enemy enemies[400];
@@ -40,6 +49,9 @@ int numEnemies;
 
 struct bullet bullets[MAX_BULLETS];
 int numBullets;
+
+struct ring rings[MAX_RINGS];
+int numRings;
 
 int map[10000];
 int mapW, mapH;
@@ -53,6 +65,15 @@ bool controlShooting = false;
 int playerCooldown = 0;
 
 void generateMap() {
+  /* zero variables */
+  numRings = 0;
+  numBullets = 0;
+  playerCooldown = 0;
+  numEnemies = 0;
+  /* reset player pos */
+  playerX = 400;
+  playerY = 500;
+
   mapW = 20;
   mapH = 220;
   for(int i = 0; i < mapW*mapH; i++)
@@ -123,11 +144,27 @@ void generateMap() {
       map[i] = 0;
 }
 
+void addRing(float x, float y, float r, float r2) {
+  if(numRings >= MAX_RINGS)
+    return;
+
+  struct ring *n = &rings[numRings++];
+
+  n->r = r;
+  n->x = x;
+  n->y = y;
+  n->r1 = r;
+  n->r2 = r2;
+}
+
 void addBullet(float x, float y, float a, float v, bool friendly) {
   if(numBullets >= MAX_BULLETS)
     return;
 
   struct bullet *b = &bullets[numBullets++];
+
+  if(!friendly)
+    a += ((float)(rand()%12)/12.0) * PI/8 - PI/16;
 
   b->x = x;
   b->y = y;
@@ -135,6 +172,11 @@ void addBullet(float x, float y, float a, float v, bool friendly) {
   b->xv = cosf(a)*v;
   b->yv = sinf(a)*v;
   b->friendly = friendly;
+
+  if(friendly)
+    addRing(x, y, 40, 140);
+  else
+    addRing(x, y, 50, 210);
 }
 
 void drawRect(int x, int y, int w, int h) {
@@ -142,12 +184,6 @@ void drawRect(int x, int y, int w, int h) {
     glVertex2i(x+w, y+1);
     glVertex2i(x+w, y+h);
     glVertex2i(x, y+h);
-  glEnd();
-}
-
-void drawCircle(int x, int y, int r, float s) {
-  for(float a = 0; a <= PI*2; a += s)
-    glVertex2i(x+r*cosf(a), y+r*sinf(a));
   glEnd();
 }
 
@@ -264,16 +300,16 @@ void drawBullet(struct bullet *b) {
   float a = b->a - PI/2;
 
   if(b->friendly)
-    glColor4f(0.8, 0.8, 1.0, 0.5);
+    glColor4f(1.0, 0.9, 0.8, 0.5);
   else
-    glColor4f(1.0, 1.0, 0.0, 0.5);
+    glColor4f(0.9, 0.9, 1.0, 0.5);
   glBegin(GL_POLYGON);
   drawShape(bshape1, b->x, b->y, a);
 
   if(b->friendly)
-    glColor3f(0.8, 0.8, 1.0);
+    glColor3f(1.0, 0.8, 0.7);
   else
-    glColor3f(1.0, 1.0, 0.0);
+    glColor3f(0.8, 0.8, 1.0);
   glBegin(GL_LINE_LOOP);
   drawShape(bshape1, b->x, b->y, a);
 }
@@ -283,12 +319,27 @@ void drawBullets() {
     drawBullet(&bullets[i]);
 }
 
+void drawRing(struct ring *r) {
+  float p = (r->r - r->r1)/(r->r2 - r->r1);
+  glColor4f(0.8, 0.8, 0.6, 0.5-p*0.5);
+  glBegin(GL_LINE_LOOP);
+  for(float a = 0; a < PI*2; a += 0.1)
+    glVertex2i(r->x+cosf(a)*r->r, r->y+sinf(a)*r->r);
+  glEnd();
+}
+
+void drawRings() {
+  for(int i = 0; i < numRings; i++)
+    drawRing(&rings[i]);
+}
+
 void draw() {
   glClear(GL_COLOR_BUFFER_BIT);
 
   drawMap();
   drawEnemies();
   drawPlayer();
+  drawRings();
   drawBullets();
 
   SDL_GL_SwapWindow(window);
@@ -305,6 +356,9 @@ void scroll(float s) {
   /* scroll bullets */
   for(int i = 0; i < numBullets; i++)
     bullets[i].y += s;
+  /* scroll rings */
+  for(int i = 0; i < numRings; i++)
+    rings[i].y += s;
 }
 
 bool mapXYBlocks(int x, int y) {
@@ -420,7 +474,7 @@ void updatePlayer(int diff) {
   /* handle shooting */
 
   if(controlShooting && playerCooldown <= 0) {
-    playerCooldown = 70;
+    playerCooldown = PLAYER_COOLDOWN;
     float a = atan2(directionYV, directionXV);
     addBullet(playerX, playerY, a, PLAYER_BULLETSPEED, true);
   }
@@ -466,6 +520,12 @@ void updateEnemy(struct enemy *e, int diff) {
   {
     if(lineOfFire(e->x, e->y, playerX, playerY)) {
       e->a = atan2(playerY-e->y, playerX-e->x);
+      if(e->cooldown >= 0)
+        e->cooldown -= diff;
+      else {
+        e->cooldown = ENEMY_COOLDOWN;
+        addBullet(e->x, e->y, e->a, ENEMY_BULLETSPEED, false);
+      }
     }
     else {
       speed *= 2;
@@ -562,6 +622,24 @@ void updateBullets(int diff) {
   }
 }
 
+void updateRings(int diff) {
+  for(int i = 0; i < numRings; i++) {
+    struct ring *r = &rings[i];
+    r->r += RING_SPEED*diff;
+
+    for(int j = 0; j < numEnemies; j++) {
+      if(enemies[j].death)
+        continue;
+
+      if(pow(r->x-enemies[j].x, 2) + pow(r->y-enemies[j].y, 2) < r->r*r->r)
+        enemies[j].alert = true;
+    }
+
+    if(r->r > r->r2)
+      rings[i--] = rings[--numRings];
+  }
+}
+
 void update(int diff) {
   /* update scroll */
   scroll(SCROLL_SPEED*diff);
@@ -570,6 +648,7 @@ void update(int diff) {
   updateEnemies(diff);
 
   updateBullets(diff);
+  updateRings(diff);
 }
 
 int main() {
