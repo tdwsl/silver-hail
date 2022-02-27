@@ -63,6 +63,8 @@ int controlXV = 0, controlYV = 0;
 int directionYV = -1, directionXV = 0;
 bool controlShooting = false;
 int playerCooldown = 0;
+bool playerDead;
+bool paused = false;
 
 void generateMap() {
   /* zero variables */
@@ -70,9 +72,7 @@ void generateMap() {
   numBullets = 0;
   playerCooldown = 0;
   numEnemies = 0;
-  /* reset player pos */
-  playerX = 400;
-  playerY = 500;
+  playerDead = false;
 
   mapW = 20;
   mapH = 220;
@@ -142,6 +142,12 @@ void generateMap() {
   for(int i = 0; i < mapW*mapH; i++)
     if(map[i] == -1)
       map[i] = 0;
+}
+
+void reset() {
+  playerX = 320;
+  playerY = 440;
+  generateMap();
 }
 
 void addRing(float x, float y, float r, float r2) {
@@ -228,11 +234,16 @@ void drawPlayer() {
 
   float a = atan2(directionYV, directionXV)-PI/2;
 
-  glColor4f(0.8, 0.8, 0.5, 0.5);
-  glBegin(GL_POLYGON);
-  drawShape(playerShape, playerX, playerY, a);
+  if(!playerDead) {
+    glColor4f(0.8, 0.8, 0.5, 0.5);
+    glBegin(GL_POLYGON);
+    drawShape(playerShape, playerX, playerY, a);
+  }
 
-  glColor3f(1.0, 1.0, 0.5);
+  if(playerDead)
+    glColor4f(0.4, 0.4, 0.4, 0.3);
+  else
+    glColor3f(1.0, 1.0, 0.5);
   glBegin(GL_LINE_LOOP);
   drawShape(playerShape, playerX, playerY, a);
 }
@@ -337,8 +348,8 @@ void draw() {
   glClear(GL_COLOR_BUFFER_BIT);
 
   drawMap();
-  drawEnemies();
   drawPlayer();
+  drawEnemies();
   drawRings();
   drawBullets();
 
@@ -346,8 +357,9 @@ void draw() {
 }
 
 void scroll(float s) {
-  if(mapScroll < 0)
-    return;
+  /*if(mapScroll < 0)
+    return;*/
+
   mapScroll -= s;
   playerY += s;
   /* scroll enemies */
@@ -359,6 +371,12 @@ void scroll(float s) {
   /* scroll rings */
   for(int i = 0; i < numRings; i++)
     rings[i].y += s;
+
+  /* new level */
+  if(mapScroll < FAR_RANGE-640 && numEnemies == 0) {
+    generateMap();
+    mapScroll += 640;
+  }
 }
 
 bool mapXYBlocks(int x, int y) {
@@ -444,6 +462,12 @@ bool lineOfFire(int x1, int y1, int x2, int y2) {
 
 void hitPlayer() {
   printf("player hit!\n");
+
+  playerDead = true;
+
+  /* all enemies gather round */
+  for(int i = 0; i < numEnemies; i++)
+    enemies[i].alert = true;
 }
 
 void hitEnemy(struct enemy *e) {
@@ -454,6 +478,20 @@ void hitEnemy(struct enemy *e) {
 }
 
 void updatePlayer(int diff) {
+  if(playerDead)
+    return;
+
+  /* check if player is crushed */
+  if(mapXYBlocks(playerX, playerY+mapScroll)) {
+    hitPlayer()	;
+    return;
+  }
+
+  if((controlXV || controlYV) && !controlShooting) {
+    directionXV = controlXV;
+    directionYV = controlYV;
+  }
+
   moveXY(&playerX, &playerY, controlXV*0.2*diff, 0);
   moveXY(&playerX, &playerY, 0, controlYV*0.2*diff);
   /*playerX += controlXV*0.2*diff;
@@ -522,16 +560,24 @@ void updateEnemy(struct enemy *e, int diff) {
       e->a = atan2(playerY-e->y, playerX-e->x);
       if(e->cooldown >= 0)
         e->cooldown -= diff;
-      else {
+      else if(!playerDead) {
         e->cooldown = ENEMY_COOLDOWN;
         addBullet(e->x, e->y, e->a, ENEMY_BULLETSPEED, false);
       }
+      else
+        e->alert = false;
     }
     else {
       speed *= 2;
       followXY(&e->x, &e->y, speed*diff);
       if(e->x != ox || e->y != oy)
         e->a = atan2(e->y-oy, e->x-ox);
+      else {
+        e->a += PI/4;
+        moveXY(&e->x, &e->y, cosf(e->a)*speed*diff, sinf(e->a)*speed*diff);
+        if(e->x == ox && e->y == oy)
+          e->alert = false;
+      }
     }
   }
   else {
@@ -545,6 +591,9 @@ void updateEnemy(struct enemy *e, int diff) {
   }
 
   /* check if enemy can see player */
+
+  if(playerDead || e->alert)
+    return;
 
   float pa = atan2(playerY-e->y, playerX-e->x);
   float ad = pa-e->a;
@@ -565,8 +614,10 @@ void updateEnemy(struct enemy *e, int diff) {
         break;
     }
 
-    if(m*m >= pd)
+    if(m*m >= pd) {
       e->alert = true;
+      e->cooldown = ENEMY_COOLDOWN*2;
+    }
   }
 }
 
@@ -641,20 +692,26 @@ void updateRings(int diff) {
 }
 
 void update(int diff) {
-  /* update scroll */
-  scroll(SCROLL_SPEED*diff);
+  if(paused)
+    return;
 
   updatePlayer(diff);
   updateEnemies(diff);
 
   updateBullets(diff);
   updateRings(diff);
+
+  if(playerDead)
+    return;
+
+  /* update scroll */
+  scroll(SCROLL_SPEED*diff);
 }
 
 int main() {
   initSDL();
   srand(time(NULL));
-  generateMap();
+  reset();
 
   int lastUpdate = SDL_GetTicks();
 
@@ -685,6 +742,12 @@ int main() {
         case SDLK_z:
           controlShooting = true;
           break;
+        case SDLK_r:
+          reset();
+          break;
+        case SDLK_p:
+          paused = !paused;
+          break;
         }
         break;
       case SDL_KEYUP:
@@ -711,11 +774,6 @@ int main() {
         }
         break;
       }
-
-    if((controlXV || controlYV) && !controlShooting) {
-      directionXV = controlXV;
-      directionYV = controlYV;
-    }
 
     draw();
 
