@@ -69,11 +69,7 @@ int difficulty = 1;
 
 void generateMap() {
   /* zero variables */
-  numRings = 0;
-  numBullets = 0;
-  playerCooldown = 0;
   numEnemies = 0;
-  playerDead = false;
 
   mapW = 20;
   if(difficulty < 7)
@@ -161,7 +157,11 @@ void generateMap() {
 void reset() {
   playerX = 320;
   playerY = 440;
+  playerDead = false;
   difficulty = 1;
+  numRings = 0;
+  numBullets = 0;
+  playerCooldown = 0;
   generateMap();
 }
 
