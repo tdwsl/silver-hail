@@ -15,16 +15,31 @@
 #define PI 3.14159
 #define SCROLL_SPEED 0.04
 #define ENEMY_FOVRANGE 200
+#define MAX_BULLETS 24000
+#define NEAR_RANGE (640+100)
+#define FAR_RANGE (-200)
+#define PLAYER_BULLETSPEED 0.4
+#define ENEMY_DEATHSPEED 0.001
 
 struct enemy {
   float x, y, a;
   bool alert;
+  int cooldown;
+  float death;
+};
+
+struct bullet {
+  float x, y, xv, yv, a;
+  bool friendly;
 };
 
 int playerhmap[280000];
 
 struct enemy enemies[400];
 int numEnemies;
+
+struct bullet bullets[MAX_BULLETS];
+int numBullets;
 
 int map[10000];
 int mapW, mapH;
@@ -34,6 +49,8 @@ float mapScroll = 0;
 float playerX = 400, playerY = 500;
 int controlXV = 0, controlYV = 0;
 int directionYV = -1, directionXV = 0;
+bool controlShooting = false;
+int playerCooldown = 0;
 
 void generateMap() {
   mapW = 20;
@@ -98,10 +115,26 @@ void generateMap() {
     enemies[i].y = (xy/mapW)*32+20 - mapScroll;
     enemies[i].a = ((float)(rand()%12)/12.0)*PI*2;
     enemies[i].alert = false;
+    enemies[i].cooldown = 0;
+    enemies[i].death = 0;
   }
   for(int i = 0; i < mapW*mapH; i++)
     if(map[i] == -1)
       map[i] = 0;
+}
+
+void addBullet(float x, float y, float a, float v, bool friendly) {
+  if(numBullets >= MAX_BULLETS)
+    return;
+
+  struct bullet *b = &bullets[numBullets++];
+
+  b->x = x;
+  b->y = y;
+  b->a = a;
+  b->xv = cosf(a)*v;
+  b->yv = sinf(a)*v;
+  b->friendly = friendly;
 }
 
 void drawRect(int x, int y, int w, int h) {
@@ -184,16 +217,26 @@ void drawEnemy(struct enemy *e) {
 
   float a = e->a-PI/2;
 
-  glColor4f(0.3, 0.4, 0.8, 0.4);
-  glBegin(GL_POLYGON);
-  drawShape(eshape1, e->x, e->y, a);
+  if(!e->death) {
+    glColor4f(0.3, 0.4, 0.8, 0.4);
+    glBegin(GL_POLYGON);
+    drawShape(eshape1, e->x, e->y, a);
+  }
 
-  glColor3f(0.3, 0.3, 1.0);
-  glBegin(GL_LINES);
+  if(e->death)
+    glColor4f(1.0-0.6*e->death, 1.0-0.6*e->death, 1.0-0.6*e->death,
+        1.0-0.6*e->death);
+  else
+    glColor3f(0.3, 0.3, 1.0);
+  glBegin(GL_LINE_LOOP);
   drawShape(eshape1, e->x, e->y, a);
 
   /* draw fov */
-  if(e->alert)
+  if(e->death)
+    glColor4f(
+        0.6-0.6*e->death, 0.6-0.6*e->death, 0.6-0.6*e->death,
+        0.5-0.5*e->death);
+  else if(e->alert)
     glColor4f(1.0, 0, 0, 0.6);
   else
     glColor4f(0.8, 0.4, 0, 0.6);
@@ -208,12 +251,45 @@ void drawEnemies() {
     drawEnemy(&enemies[i]);
 }
 
+void drawBullet(struct bullet *b) {
+  static const int bshape1[] = {
+    5,
+    -3, 6,
+    3, 6,
+    3, -2,
+    0, -8,
+    -3, -2,
+  };
+
+  float a = b->a - PI/2;
+
+  if(b->friendly)
+    glColor4f(0.8, 0.8, 1.0, 0.5);
+  else
+    glColor4f(1.0, 1.0, 0.0, 0.5);
+  glBegin(GL_POLYGON);
+  drawShape(bshape1, b->x, b->y, a);
+
+  if(b->friendly)
+    glColor3f(0.8, 0.8, 1.0);
+  else
+    glColor3f(1.0, 1.0, 0.0);
+  glBegin(GL_LINE_LOOP);
+  drawShape(bshape1, b->x, b->y, a);
+}
+
+void drawBullets() {
+  for(int i = 0; i < numBullets; i++)
+    drawBullet(&bullets[i]);
+}
+
 void draw() {
   glClear(GL_COLOR_BUFFER_BIT);
 
   drawMap();
   drawEnemies();
   drawPlayer();
+  drawBullets();
 
   SDL_GL_SwapWindow(window);
 }
@@ -226,6 +302,9 @@ void scroll(float s) {
   /* scroll enemies */
   for(int i = 0; i < numEnemies; i++)
     enemies[i].y += s;
+  /* scroll bullets */
+  for(int i = 0; i < numBullets; i++)
+    bullets[i].y += s;
 }
 
 bool mapXYBlocks(int x, int y) {
@@ -248,7 +327,7 @@ void moveXY(float *px, float *py, float xm, float ym) {
 
   if(px != &playerX)
     for(int i = 0; i < numEnemies; i++) {
-      if(&enemies[i].x == px)
+      if(&enemies[i].x == px || enemies[i].death)
         continue;
       if(pow(enemies[i].x-dx, 2) + pow(enemies[i].y-dy, 2) < 10*10)
         return;
@@ -309,6 +388,17 @@ bool lineOfFire(int x1, int y1, int x2, int y2) {
   return true;
 }
 
+void hitPlayer() {
+  printf("player hit!\n");
+}
+
+void hitEnemy(struct enemy *e) {
+  if(e->death)
+    return;
+
+  e->death = ENEMY_DEATHSPEED;
+}
+
 void updatePlayer(int diff) {
   moveXY(&playerX, &playerY, controlXV*0.2*diff, 0);
   moveXY(&playerX, &playerY, 0, controlYV*0.2*diff);
@@ -326,6 +416,16 @@ void updatePlayer(int diff) {
 
   if(playerY < 100)
     scroll(100-playerY);
+
+  /* handle shooting */
+
+  if(controlShooting && playerCooldown <= 0) {
+    playerCooldown = 70;
+    float a = atan2(directionYV, directionXV);
+    addBullet(playerX, playerY, a, PLAYER_BULLETSPEED, true);
+  }
+  else if(playerCooldown)
+    playerCooldown -= diff;
 
   /* generate map for following player */
 
@@ -350,6 +450,15 @@ void updatePlayer(int diff) {
 }
 
 void updateEnemy(struct enemy *e, int diff) {
+  /* process death */
+  if(e->death) {
+    e->death += ENEMY_DEATHSPEED*diff;
+    if(e->death > 1.0)
+      e->death = 1.0;
+
+    return;
+  }
+
   float ox = e->x, oy = e->y;
   float speed = 0.06;
 
@@ -407,8 +516,50 @@ void updateEnemies(int diff) {
 
   /* cull out of range */
   for(int i = 0; i < numEnemies; i++)
-    if(enemies[i].y > 640+100)
+    if(enemies[i].y > NEAR_RANGE)
       enemies[i--] = enemies[--numEnemies];
+}
+
+void updateBullets(int diff) {
+  for(int i = 0; i < numBullets; i++) {
+    struct bullet *b = &bullets[i];
+
+    b->x += b->xv*diff;
+    b->y += b->yv*diff;
+
+    if(b->y > NEAR_RANGE || b->y < FAR_RANGE
+        || b->x < 0 || b->x >= mapW*32) {
+      bullets[i--] = bullets[--numBullets];
+      continue;
+    }
+
+    if(mapXYBlocks(b->x, b->y+mapScroll)) {
+      bullets[i--] = bullets[--numBullets];
+      continue;
+    }
+
+    if(!b->friendly) {
+      if(pow(playerX-b->x, 2) + pow(playerY-b->y, 2) < 7*7) {
+        hitPlayer();
+        bullets[i--] = bullets[--numBullets];
+      }
+      continue;
+    }
+
+    for(int j = 0; j < numEnemies; j++) {
+      struct enemy *e = &enemies[j];
+      if(e->death)
+        continue;
+
+      if(pow(e->x-b->x, 2) + pow(e->y-b->y, 2) < 18*18) {
+        //enemies[j--] = enemies[--numEnemies];
+        hitEnemy(e);
+        bullets[i--] = bullets[--numBullets];
+        printf("hit!\n");
+        break;
+      }
+    }
+  }
 }
 
 void update(int diff) {
@@ -417,6 +568,8 @@ void update(int diff) {
 
   updatePlayer(diff);
   updateEnemies(diff);
+
+  updateBullets(diff);
 }
 
 int main() {
@@ -450,6 +603,9 @@ int main() {
         case SDLK_RIGHT:
           controlXV = 1;
           break;
+        case SDLK_z:
+          controlShooting = true;
+          break;
         }
         break;
       case SDL_KEYUP:
@@ -470,11 +626,14 @@ int main() {
           if(controlXV > 0)
             controlXV = 0;
           break;
+        case SDLK_z:
+          controlShooting = false;
+          break;
         }
         break;
       }
 
-    if(controlXV || controlYV) {
+    if((controlXV || controlYV) && !controlShooting) {
       directionXV = controlXV;
       directionYV = controlYV;
     }
