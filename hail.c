@@ -428,14 +428,18 @@ void moveXY(float *px, float *py, float xm, float ym) {
 void followXY(float *px, float *py, float speed) {
   int tx = (*px)/32.0;
   int ty = ((*py)+mapScroll)/32.0;
+
+  if(ty >= mapH || ty < 0) {
+    float a = atan2(playerY-(*py), playerX-(*px));
+    (*px) += cosf(a)*speed;
+    (*py) += sinf(a)*speed;
+    return;
+  }
+
   if(tx < 0)
     tx = 0;
-  if(ty < 0)
-    ty = 0;
   if(tx >= mapW)
     tx = mapW-1;
-  if(ty >= mapH)
-    ty = mapH-1;
 
   if(playerhmap[ty*mapW+tx] <= 0)
     return;
