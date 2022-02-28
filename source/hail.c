@@ -1059,11 +1059,14 @@ int main(int argc, char **args) {
         break;
       }
 
-    draw();
-
     int currentTime = SDL_GetTicks();
+    if(currentTime - lastUpdate < 20)
+      continue;
+
     update(currentTime-lastUpdate);
     lastUpdate = currentTime;
+
+    draw();
   }
 
   saveScore();
