@@ -52,10 +52,10 @@ unsigned int numbers[] = {
   LEFT_HI | LEFT_LO | HI | LO | RIGHT_HI | RIGHT_LO,		// 0
   RIGHT_HI | RIGHT_LO,						// 1
   HI | RIGHT_HI | MID | LEFT_LO | LO,				// 2
-  LEFT_HI | LEFT_LO | HI | MID | LO,				// 3
+  RIGHT_HI | RIGHT_LO | HI | MID | LO,				// 3
   LEFT_HI | MID | RIGHT_HI | RIGHT_LO,				// 4
   HI | LEFT_HI | MID | RIGHT_LO | LO,				// 5
-  HI | RIGHT_HI | MID | RIGHT_LO | LO | LEFT_LO,		// 6
+  HI | LEFT_HI | MID | RIGHT_LO | LO | LEFT_LO,			// 6
   HI | RIGHT_HI | RIGHT_LO,					// 7
   HI | RIGHT_HI | LEFT_HI | MID | LEFT_LO | RIGHT_LO | LO,	// 8
   HI | RIGHT_HI | LEFT_HI | MID | RIGHT_LO,			// 9

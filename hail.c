@@ -29,6 +29,7 @@
 #define ENEMY_COOLDOWN 190
 #define ENEMY_BULLETSPEED 0.3
 #define PARTICLE_DECCELERATION 0.001
+#define MAX_MESSAGES 200
 
 struct enemy {
   float x, y, a;
@@ -50,6 +51,11 @@ struct particle {
   float x, y, xv, yv, r, g, b, a, v;
 };
 
+struct message {
+  const char *text;
+  float x, y, y1, y2, yv;
+};
+
 int playerhmap[280000];
 
 struct enemy enemies[400];
@@ -63,6 +69,9 @@ int numRings;
 
 struct particle particles[MAX_PARTICLES];
 int numParticles;
+
+struct message messages[MAX_MESSAGES];
+int numMessages;
 
 int map[10000];
 int mapW, mapH;
@@ -78,6 +87,8 @@ bool playerDead;
 bool paused = false;
 int difficulty = 1;
 int score = 0;
+int highScore = 0;
+int lastScore = 0;
 
 void generateMap() {
   /* zero variables */
@@ -166,7 +177,38 @@ void generateMap() {
       map[i] = 0;
 }
 
+void loadScore() {
+  FILE *fp = fopen("score.txt", "r");
+  if(!fp) {
+    lastScore = 0;
+    highScore = 0;
+    return;
+  }
+
+  fscanf(fp, "%d", &highScore);
+  fscanf(fp, "%d", &lastScore);
+
+  fclose(fp);
+}
+
+void saveScore() {
+  FILE *fp;
+  assert(fp = fopen("score.txt", "w"));
+  fprintf(fp, "%d\n%d\n", highScore, lastScore);
+}
+
+void addScore(int s) {
+  if(playerDead)
+    return;
+  score += s;
+  if(score >= highScore)
+    highScore = score;
+}
+
 void reset() {
+  lastScore = score;
+
+  paused = false;
   playerX = 320;
   playerY = 440;
   playerDead = false;
@@ -176,7 +218,26 @@ void reset() {
   playerCooldown = 0;
   numParticles = 0;
   score = 0;
+  numMessages = 0;
   generateMap();
+}
+
+void addMessage(const char *text, float x, float y, float y2, float yv) {
+  if(numMessages >= MAX_MESSAGES)
+    return;
+
+  struct message *m = &messages[numMessages++];
+
+  m->x = x;
+  m->y = y;
+  m->y1 = y;
+  m->y2 = y2;
+  m->yv = yv;
+  m->text = text;
+}
+
+void addScoreMessage(const char *text) {
+  addMessage(text, 10, 120, 0, -0.1);
 }
 
 void addParticle(float x, float y, float xv, float yv,
@@ -420,6 +481,26 @@ void drawParticles() {
   }
 }
 
+void drawScore() {
+  static char scoreText[600];
+
+  sprintf(scoreText, "hi %.10d", highScore);
+  drawText(scoreText, 10, 10, 24, 30, 0.8);
+
+  sprintf(scoreText, "   %.10d", score);
+  drawText(scoreText, 10, 40, 24, 30, 0.8);
+}
+
+void drawMessage(struct message *m) {
+  float p = (m->y-m->y1) / (m->y2-m->y1);
+  drawText(m->text, m->x, m->y, 24, 30, 0.8-p*0.8);
+}
+
+void drawMessages() {
+  for(int i = 0; i < numMessages; i++)
+    drawMessage(&messages[i]);
+}
+
 void draw() {
   glClear(GL_COLOR_BUFFER_BIT);
 
@@ -449,6 +530,10 @@ void draw() {
     drawText("p pause  r restart", 8, 480-28, 16, 26, 0.2);
   }
 
+  glLineWidth(2);
+  drawScore();
+  drawMessages();
+
   SDL_GL_SwapWindow(window);
 }
 
@@ -475,6 +560,8 @@ void scroll(float s) {
   if(mapScroll < FAR_RANGE-640 && numEnemies == 0) {
     difficulty++;
     generateMap();
+    addScore(3000);
+    addScoreMessage("level complete");
   }
 }
 
@@ -557,11 +644,11 @@ bool lineOfFire(int x1, int y1, int x2, int y2) {
   int d = pow(y2-y1, 2) + pow(x2-x1, 2);
   float a = atan2(y2-y1, x2-x1);
 
-  for(int m = 10; m*m < d; m++) {
+  for(int m = 0; m*m < d; m++) {
     int x = x1+cosf(a)*m, y = y1+sinf(a)*m+mapScroll;
     if(mapXYBlocks(x, y))
       return false;
-    if(m > ENEMY_FOVRANGE*1.5)
+    if(m > ENEMY_FOVRANGE*2)
       return false;
   }
 
@@ -579,6 +666,15 @@ void hitPlayer() {
 void hitEnemy(struct enemy *e) {
   if(e->death)
     return;
+
+  if(e->alert) {
+    addScore(1000);
+    addScoreMessage("shootout");
+  }
+  else {
+    addScore(1200);
+    addScoreMessage("execution");
+  }
 
   e->death = ENEMY_DEATHSPEED;
 }
@@ -619,8 +715,10 @@ void updatePlayer(int diff) {
   if(playerY > 480)
     playerY = 480-1;
 
-  if(playerY < 100)
+  if(playerY < 100) {
+    addScore(100-playerY);
     scroll(100-playerY);
+  }
 
   /* handle shooting */
 
@@ -677,7 +775,7 @@ void updateEnemy(struct enemy *e, int diff) {
         e->cooldown = ENEMY_COOLDOWN;
         addBullet(e->x, e->y, e->a, ENEMY_BULLETSPEED, false);
       }
-      else
+      else if(playerDead)
         e->alert = false;
     }
     else {
@@ -740,8 +838,19 @@ void updateEnemies(int diff) {
 
   /* cull out of range */
   for(int i = 0; i < numEnemies; i++)
-    if(enemies[i].y > NEAR_RANGE)
+    if(enemies[i].y > NEAR_RANGE) {
+      if(!enemies[i].death) {
+        if(enemies[i].alert) {
+          addScore(800);
+          addScoreMessage("escaped");
+        }
+        else {
+          addScore(1000);
+          addScoreMessage("undetected");
+        }
+      }
       enemies[i--] = enemies[--numEnemies];
+    }
 }
 
 void updateBullets(int diff) {
@@ -825,7 +934,20 @@ void updateParticles(int diff) {
   }
 }
 
+void updateMessages(int diff) {
+  for(int i = 0; i < numMessages; i++) {
+    messages[i].y += messages[i].yv*diff;
+
+    if(messages[i].yv > 0 && messages[i].y > messages[i].y2)
+      messages[i--] = messages[--numMessages];
+    else if(messages[i].yv < 0 && messages[i].y < messages[i].y2)
+      messages[i--] = messages[--numMessages];
+  }
+}
+
 void update(int diff) {
+  updateMessages(diff);
+
   if(paused)
     return;
 
@@ -845,6 +967,9 @@ void update(int diff) {
 
 int main() {
   initSDL();
+
+  loadScore();
+
   srand(time(NULL));
   reset();
 
@@ -918,6 +1043,8 @@ int main() {
     update(currentTime-lastUpdate);
     lastUpdate = currentTime;
   }
+
+  saveScore();
 
   endSDL();
   return 0;
