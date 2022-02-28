@@ -13,6 +13,7 @@
 #include "hmap.h"
 #include "dirs.h"
 #include "text.h"
+#include "music.h"
 
 #define PI 3.14159
 #define SCROLL_SPEED 0.04
@@ -30,6 +31,7 @@
 #define ENEMY_BULLETSPEED 0.3
 #define PARTICLE_DECCELERATION 0.001
 #define MAX_MESSAGES 200
+#define MAX_ENEMIES 400
 
 struct enemy {
   float x, y, a;
@@ -58,7 +60,7 @@ struct message {
 
 int playerhmap[280000];
 
-struct enemy enemies[400];
+struct enemy enemies[MAX_ENEMIES];
 int numEnemies;
 
 struct bullet bullets[MAX_BULLETS];
@@ -91,9 +93,6 @@ int highScore = 0;
 int lastScore = 0;
 
 void generateMap() {
-  /* zero variables */
-  numEnemies = 0;
-
   mapW = 20;
   if(difficulty < 7)
     mapH = difficulty*30;
@@ -157,7 +156,7 @@ void generateMap() {
 
   /* place enemies */
   numEnemies = difficulty*2 + rand()%(difficulty+2);
-  for(int i = 0; i < numEnemies; i++) {
+  for(int i = 0; i < numEnemies && i < MAX_ENEMIES; i++) {
     int xy;
     for(;;) {
       xy = rand()%(mapW*mapH);
@@ -315,7 +314,7 @@ void addBullet(float x, float y, float a, float v, bool friendly) {
 
 void drawRect(int x, int y, int w, int h) {
     glVertex2i(x, y);
-    glVertex2i(x+w, y+1);
+    glVertex2i(x+w, y);
     glVertex2i(x+w, y+h);
     glVertex2i(x, y+h);
   glEnd();
@@ -527,7 +526,9 @@ void draw() {
   else {
     glLineWidth(1);
     drawText("arrows movement  z fire", 8, 480-56, 16, 26, 0.2);
-    drawText("p pause  r restart", 8, 480-28, 16, 26, 0.2);
+    drawText("p pause  r restart  m music", 8, 480-28, 16, 26, 0.2);
+
+    drawText("alt enter  fullscreen", 640-21*12-2, 2, 12, 18, 0.2);
   }
 
   glLineWidth(2);
@@ -657,6 +658,8 @@ bool lineOfFire(int x1, int y1, int x2, int y2) {
 
 void hitPlayer() {
   playerDead = true;
+
+  nextTrack();
 
   /* all enemies gather round */
   for(int i = 0; i < numEnemies; i++)
@@ -792,6 +795,10 @@ void updateEnemy(struct enemy *e, int diff) {
     }
   }
   else {
+    /* try to avoid extending level */
+    if(e->y+mapScroll < 0)
+      e->a = PI/2;
+
     moveXY(&e->x, &e->y, cosf(e->a)*speed*diff, sinf(e->a)*speed*diff);
 
     if(e->x == ox || e->y == oy) {
@@ -946,6 +953,8 @@ void updateMessages(int diff) {
 }
 
 void update(int diff) {
+  updateMusic();
+
   updateMessages(diff);
 
   if(paused)
@@ -965,10 +974,12 @@ void update(int diff) {
   scroll(SCROLL_SPEED*diff);
 }
 
-int main() {
+int main(int argc, char **args) {
   initSDL();
 
   loadScore();
+
+  loadMusic();
 
   srand(time(NULL));
   reset();
@@ -1009,6 +1020,15 @@ int main() {
           paused = !paused;
           if(playerDead)
             paused = false;
+          break;
+        case SDLK_m:
+          toggleMute();
+          break;
+        case SDLK_RETURN:
+          if(!keyboardState[SDL_SCANCODE_LALT])
+            break;
+        case SDLK_F11:
+          toggleFullscreen();
           break;
         }
         break;
