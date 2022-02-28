@@ -1,0 +1,5 @@
+shot1.wav: https://pixabay.com/sound-effects/shoot02wav-14562/
+shot2.wav: https://pixabay.com/sound-effects/lazer-13089/
+impact1.wav: https://pixabay.com/sound-effects/musket-explosion-6383/
+impact2.wav: https://pixabay.com/sound-effects/crash-6711/
+impact3.wav: https://pixabay.com/sound-effects/fast-simple-chop-5-6270/

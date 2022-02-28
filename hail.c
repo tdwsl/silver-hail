@@ -2,6 +2,7 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
+#include <SDL2/SDL_mixer.h>
 #include <GL/gl.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -237,10 +238,14 @@ void addBullet(float x, float y, float a, float v, bool friendly) {
   b->yv = sinf(a)*v;
   b->friendly = friendly;
 
-  if(friendly)
+  if(friendly) {
+    Mix_PlayChannel(-1, sfxShot1, 0);
     addRing(x, y, 40, 140, RING_SPEED);
-  else
+  }
+  else {
+    Mix_PlayChannel(-1, sfxShot2, 0);
     addRing(x, y, 50, 210, RING_SPEED);
+  }
 
   sprayParticles(x, y, a, 0.3, 10, 0.8, 0.5, 0, 0.04);
 }
@@ -431,10 +436,13 @@ void draw() {
     if((SDL_GetTicks()/512) % 2)
       drawText("pause", 640/2 - 5*30, 480/2 - 40, 60, 80, 1.0);
 
+  if(playerDead)
+    drawText("game over", 640/2 - 9*25, 480/2 - 36, 50, 72, 1.0);
+
   glLineWidth(1);
 
-  drawText("arrows movement  z fire", 8, 480-56, 16, 26, 0.07);
-  drawText("p pause  r restart", 8, 480-28, 16, 26, 0.07);
+  drawText("arrows movement  z fire", 8, 480-56, 16, 26, 0.2);
+  drawText("p pause  r restart", 8, 480-28, 16, 26, 0.2);
 
   SDL_GL_SwapWindow(window);
 }
@@ -583,6 +591,7 @@ void updatePlayer(int diff) {
     int x = playerX/32, y = (playerY+mapScroll)/32;
     map[y*mapW+x] = 0;
     addRing(playerX, playerY, 50, 1500, RING_SPEED*7);
+    Mix_PlayChannel(-1, sfxImpact2, 0);
     sprayParticles(playerX, playerY, -PI/2, 0.3, 30, 0.8, 0.8, 0.8, 0.4);
   }
 
@@ -746,6 +755,7 @@ void updateBullets(int diff) {
     if(mapXYBlocks(b->x, b->y+mapScroll)) {
       addRing(b->x, b->y, 10, 40, RING_SPEED);
       sprayParticles(b->x, b->y, b->a+PI, 0.04, 6, 0.3, 0.3, 0.3, 0.04);
+      Mix_PlayChannel(-1, sfxImpact3, 0);
       bullets[i--] = bullets[--numBullets];
       continue;
     }
@@ -754,6 +764,7 @@ void updateBullets(int diff) {
       if(pow(playerX-b->x, 2) + pow(playerY-b->y, 2) < 7*7) {
         hitPlayer();
         sprayParticles(b->x, b->y, b->a, 0.4, 30, 1.0, 0, 0, 0.3);
+        Mix_PlayChannel(-1, sfxImpact1, 0);
         bullets[i--] = bullets[--numBullets];
       }
       continue;
@@ -769,6 +780,7 @@ void updateBullets(int diff) {
         hitEnemy(e);
         sprayParticles(b->x, b->y, b->a+PI, 0.2, 8, 1.0, 0, 0, 0.2);
         sprayParticles(b->x, b->y, b->a, 0.4, 16, 1.0, 0, 0, 0.2);
+        Mix_PlayChannel(-1, sfxImpact1, 0);
         addRing(b->x, b->y, 10, 40, RING_SPEED);
         bullets[i--] = bullets[--numBullets];
         break;
@@ -865,6 +877,8 @@ int main() {
           break;
         case SDLK_p:
           paused = !paused;
+          if(playerDead)
+            paused = false;
           break;
         }
         break;
