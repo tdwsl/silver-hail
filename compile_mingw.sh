@@ -1,5 +1,5 @@
-SDL2=./SDL2-2.0.20
-SDL2_mixer=./SDL2_mixer-2.0.4
+SDL2=~/SDL2-2.0.20
+SDL2_mixer=~/SDL2_mixer-2.0.4
 mingw=i686-w64-mingw32
 
 $mingw-gcc \
@@ -12,3 +12,4 @@ $mingw-gcc \
 
 cp $SDL2/$mingw/bin/SDL2.dll .
 cp $SDL2_mixer/$mingw/bin/SDL2_mixer.dll .
+cp $SDL2_mixer/$mingw/bin/libmpg123-0.dll .

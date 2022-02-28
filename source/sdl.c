@@ -35,8 +35,8 @@ void initSDL() {
   const int init = SDL_INIT_VIDEO | SDL_INIT_AUDIO
       | SDL_INIT_TIMER | SDL_INIT_EVENTS;
 
-  assert(SDL_Init(init) >= 0);
-  assert(window = SDL_CreateWindow("Silver Hail",
+  sassert(SDL_Init(init) >= 0);
+  sassert(window = SDL_CreateWindow("Silver Hail",
       SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
       640, 480, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL));
 
@@ -44,15 +44,17 @@ void initSDL() {
 
 #ifndef NOSOUND
   /* init mixer */
-  assert(Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT,
+  const int mixFlags = MIX_INIT_MP3;
+  //sassert((Mix_Init(mixFlags)&mixFlags) == mixFlags);
+  sassert(Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT,
       2, 4096) >= 0);
 
   /* load sfx */
-  assert(sfxShot1 = Mix_LoadWAV("sfx/shot1.wav"));
-  assert(sfxShot2 = Mix_LoadWAV("sfx/shot2.wav"));
-  assert(sfxImpact1 = Mix_LoadWAV("sfx/impact1.wav"));
-  assert(sfxImpact2 = Mix_LoadWAV("sfx/impact2.wav"));
-  assert(sfxImpact3 = Mix_LoadWAV("sfx/impact3.wav"));
+  sassert(sfxShot1 = Mix_LoadWAV("sfx/shot1.wav"));
+  sassert(sfxShot2 = Mix_LoadWAV("sfx/shot2.wav"));
+  sassert(sfxImpact1 = Mix_LoadWAV("sfx/impact1.wav"));
+  sassert(sfxImpact2 = Mix_LoadWAV("sfx/impact2.wav"));
+  sassert(sfxImpact3 = Mix_LoadWAV("sfx/impact3.wav"));
 #endif
 
   /* init opengl */
@@ -99,6 +101,7 @@ void endSDL() {
   Mix_FreeChunk(sfxShot1);
 
   Mix_CloseAudio();
+  //Mix_Quit();
 #endif
 
   SDL_DestroyWindow(window);

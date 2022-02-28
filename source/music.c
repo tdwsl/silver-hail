@@ -13,7 +13,7 @@ bool newTrack = false;
 
 void loadTrack(const char *filename) {
   //printf("loading %s\n", filename);
-  assert(tracks[numTracks++] = Mix_LoadMUS(filename));
+  sassert(tracks[numTracks++] = Mix_LoadMUS(filename));
 }
 
 void nextTrack() {
