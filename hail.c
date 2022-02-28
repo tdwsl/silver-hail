@@ -77,6 +77,7 @@ int playerCooldown = 0;
 bool playerDead;
 bool paused = false;
 int difficulty = 1;
+int score = 0;
 
 void generateMap() {
   /* zero variables */
@@ -174,6 +175,7 @@ void reset() {
   numBullets = 0;
   playerCooldown = 0;
   numParticles = 0;
+  score = 0;
   generateMap();
 }
 
@@ -275,13 +277,13 @@ void drawMap() {
 
     switch(map[i]) {
     case 1:
-      glColor3f(0.6, 0.6, 0.6);
+      glColor4f(0.6, 0.6, 0.6, 0.6);
       break;
     case 2:
-      glColor3f(0.8, 0.8, 0.8);
+      glColor4f(0.8, 0.8, 0.8, 0.6);
       break;
     case 3:
-      glColor3f(0.6, 0.8, 0.6);
+      glColor4f(0.6, 0.8, 0.6, 0.6);
       break;
     }
     glBegin(GL_LINE_LOOP);
@@ -436,13 +438,16 @@ void draw() {
     if((SDL_GetTicks()/512) % 2)
       drawText("pause", 640/2 - 5*30, 480/2 - 40, 60, 80, 1.0);
 
-  if(playerDead)
+  if(playerDead) {
     drawText("game over", 640/2 - 9*25, 480/2 - 36, 50, 72, 1.0);
-
-  glLineWidth(1);
-
-  drawText("arrows movement  z fire", 8, 480-56, 16, 26, 0.2);
-  drawText("p pause  r restart", 8, 480-28, 16, 26, 0.2);
+    glLineWidth(1);
+    drawText("press r to restart", 640/2-18*8, 480/2+46, 16, 22, 0.6);
+  }
+  else {
+    glLineWidth(1);
+    drawText("arrows movement  z fire", 8, 480-56, 16, 26, 0.2);
+    drawText("p pause  r restart", 8, 480-28, 16, 26, 0.2);
+  }
 
   SDL_GL_SwapWindow(window);
 }
