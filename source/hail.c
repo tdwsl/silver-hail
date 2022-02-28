@@ -236,6 +236,8 @@ void addMessage(const char *text, float x, float y, float y2, float yv) {
 }
 
 void addScoreMessage(const char *text) {
+  if(playerDead)
+    return;
   addMessage(text, 10, 120, 0, -0.1);
 }
 

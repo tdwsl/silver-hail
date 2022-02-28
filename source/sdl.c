@@ -4,6 +4,8 @@
 #include <GL/gl.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include "sdl.h"
 
 SDL_Window *window;
@@ -30,15 +32,20 @@ void initGL() {
 }
 
 void initSDL() {
-  assert(SDL_Init(SDL_INIT_EVERYTHING) >= 0);
+  const int init = SDL_INIT_VIDEO | SDL_INIT_AUDIO
+      | SDL_INIT_TIMER | SDL_INIT_EVENTS;
+
+  assert(SDL_Init(init) >= 0);
   assert(window = SDL_CreateWindow("Silver Hail",
       SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
       640, 480, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL));
 
   keyboardState = SDL_GetKeyboardState(NULL);
 
+#ifndef NOSOUND
   /* init mixer */
-  assert(Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 2, 4096) >= 0);
+  assert(Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT,
+      2, 4096) >= 0);
 
   /* load sfx */
   assert(sfxShot1 = Mix_LoadWAV("sfx/shot1.wav"));
@@ -46,6 +53,7 @@ void initSDL() {
   assert(sfxImpact1 = Mix_LoadWAV("sfx/impact1.wav"));
   assert(sfxImpact2 = Mix_LoadWAV("sfx/impact2.wav"));
   assert(sfxImpact3 = Mix_LoadWAV("sfx/impact3.wav"));
+#endif
 
   /* init opengl */
   context = SDL_GL_CreateContext(window);
@@ -77,6 +85,7 @@ void toggleFullscreen() {
 }
 
 void endSDL() {
+#ifndef NOSOUND
   /* free music */
   for(int i = 0; i < numTracks; i++)
     Mix_FreeMusic(tracks[i]);
@@ -90,6 +99,8 @@ void endSDL() {
   Mix_FreeChunk(sfxShot1);
 
   Mix_CloseAudio();
+#endif
+
   SDL_DestroyWindow(window);
   SDL_Quit();
 }
