@@ -11,6 +11,7 @@
 #include "sdl.h"
 #include "hmap.h"
 #include "dirs.h"
+#include "text.h"
 
 #define PI 3.14159
 #define SCROLL_SPEED 0.04
@@ -241,7 +242,7 @@ void addBullet(float x, float y, float a, float v, bool friendly) {
   else
     addRing(x, y, 50, 210, RING_SPEED);
 
-  sprayParticles(x, y, a, 0.3, 10, 0.8, 0.8, 0, 0.04);
+  sprayParticles(x, y, a, 0.3, 10, 0.8, 0.5, 0, 0.04);
 }
 
 void drawRect(int x, int y, int w, int h) {
@@ -415,12 +416,25 @@ void drawParticles() {
 void draw() {
   glClear(GL_COLOR_BUFFER_BIT);
 
+  glLineWidth(3);
+
   drawParticles();
   drawMap();
   drawPlayer();
   drawEnemies();
   drawRings();
   drawBullets();
+
+  /* draw ui */
+
+  if(paused)
+    if((SDL_GetTicks()/512) % 2)
+      drawText("pause", 640/2 - 5*30, 480/2 - 40, 60, 80, 1.0);
+
+  glLineWidth(1);
+
+  drawText("arrows movement  z fire", 8, 480-56, 16, 26, 0.07);
+  drawText("p pause  r restart", 8, 480-28, 16, 26, 0.07);
 
   SDL_GL_SwapWindow(window);
 }
@@ -486,9 +500,14 @@ void followXY(float *px, float *py, float speed) {
   int ty = ((*py)+mapScroll)/32.0;
 
   if(ty >= mapH || ty < 0) {
-    float a = atan2(playerY-(*py), playerX-(*px));
-    (*px) += cosf(a)*speed;
-    (*py) += sinf(a)*speed;
+    if((*px)-playerX < -30)
+      (*px) += speed;
+    else if((*px)-playerX > 30)
+      (*px) -= speed;
+    else if((*py)-playerY < -30)
+      (*py) += speed;
+    else if((*py)-playerY > 30)
+      (*py) -= speed;
     return;
   }
 
@@ -537,8 +556,6 @@ bool lineOfFire(int x1, int y1, int x2, int y2) {
 }
 
 void hitPlayer() {
-  printf("player hit!\n");
-
   playerDead = true;
 
   /* all enemies gather round */
@@ -754,7 +771,6 @@ void updateBullets(int diff) {
         sprayParticles(b->x, b->y, b->a, 0.4, 16, 1.0, 0, 0, 0.2);
         addRing(b->x, b->y, 10, 40, RING_SPEED);
         bullets[i--] = bullets[--numBullets];
-        printf("hit!\n");
         break;
       }
     }
