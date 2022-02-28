@@ -17,6 +17,7 @@
 #define ENEMY_FOVRANGE 200
 #define MAX_BULLETS 24000
 #define MAX_RINGS 48000
+#define MAX_PARTICLES 120000
 #define NEAR_RANGE (640+100)
 #define FAR_RANGE (-200)
 #define PLAYER_BULLETSPEED 0.4
@@ -25,6 +26,7 @@
 #define PLAYER_COOLDOWN 340
 #define ENEMY_COOLDOWN 190
 #define ENEMY_BULLETSPEED 0.3
+#define PARTICLE_DECCELERATION 0.001
 
 struct enemy {
   float x, y, a;
@@ -42,6 +44,10 @@ struct ring {
   float x, y, r, r1, r2, v;
 };
 
+struct particle {
+  float x, y, xv, yv, r, g, b, a, v;
+};
+
 int playerhmap[280000];
 
 struct enemy enemies[400];
@@ -52,6 +58,9 @@ int numBullets;
 
 struct ring rings[MAX_RINGS];
 int numRings;
+
+struct particle particles[MAX_PARTICLES];
+int numParticles;
 
 int map[10000];
 int mapW, mapH;
@@ -162,7 +171,39 @@ void reset() {
   numRings = 0;
   numBullets = 0;
   playerCooldown = 0;
+  numParticles = 0;
   generateMap();
+}
+
+void addParticle(float x, float y, float xv, float yv,
+    float r, float g, float b, float a)
+{
+  if(numParticles >= MAX_PARTICLES)
+    return;
+
+  struct particle *p = &particles[numParticles++];
+
+  p->x = x;
+  p->y = y;
+  p->xv = xv;
+  p->yv = yv;
+  p->r = r;
+  p->g = g;
+  p->b = b;
+  p->a = a;
+  p->v = 1.0;
+}
+
+void sprayParticles(float x, float y, float an, float v, int density,
+    float r, float g, float b, float al)
+{
+  int pn = density + rand()%(density/2);
+  for(int i = 0; i < pn; i++) {
+    float a = ((float)(rand()%25)/25.0)*(al/2)+al/2;
+    float ng = an + ((float)(rand()%22)/22.0)*0.6 - 0.3;
+    float cv = ((float)(rand()%30)/30.0)*(v/2) + v/2;
+    addParticle(x, y, cosf(ng)*cv, sinf(ng)*cv, r, g, b, a);
+  }
 }
 
 void addRing(float x, float y, float r, float r2, float v) {
@@ -199,6 +240,8 @@ void addBullet(float x, float y, float a, float v, bool friendly) {
     addRing(x, y, 40, 140, RING_SPEED);
   else
     addRing(x, y, 50, 210, RING_SPEED);
+
+  sprayParticles(x, y, a, 0.3, 10, 0.8, 0.8, 0, 0.04);
 }
 
 void drawRect(int x, int y, int w, int h) {
@@ -360,9 +403,19 @@ void drawRings() {
     drawRing(&rings[i]);
 }
 
+void drawParticles() {
+  for(int i = 0; i < numParticles; i++) {
+    struct particle *p = &particles[i];
+    glColor4f(p->r, p->g, p->b, p->a);
+    glBegin(GL_QUADS);
+    drawRect(p->x - 5, p->y - 5, 10, 10);
+  }
+}
+
 void draw() {
   glClear(GL_COLOR_BUFFER_BIT);
 
+  drawParticles();
   drawMap();
   drawPlayer();
   drawEnemies();
@@ -387,6 +440,9 @@ void scroll(float s) {
   /* scroll rings */
   for(int i = 0; i < numRings; i++)
     rings[i].y += s;
+  /* scroll particles */
+  for(int i = 0; i < numParticles; i++)
+    particles[i].y += s;
 
   /* new level */
   if(mapScroll < FAR_RANGE-640 && numEnemies == 0) {
@@ -510,6 +566,7 @@ void updatePlayer(int diff) {
     int x = playerX/32, y = (playerY+mapScroll)/32;
     map[y*mapW+x] = 0;
     addRing(playerX, playerY, 50, 1500, RING_SPEED*7);
+    sprayParticles(playerX, playerY, -PI/2, 0.3, 30, 0.8, 0.8, 0.8, 0.4);
   }
 
   if((controlXV || controlYV) && !controlShooting) {
@@ -671,6 +728,7 @@ void updateBullets(int diff) {
 
     if(mapXYBlocks(b->x, b->y+mapScroll)) {
       addRing(b->x, b->y, 10, 40, RING_SPEED);
+      sprayParticles(b->x, b->y, b->a+PI, 0.04, 6, 0.3, 0.3, 0.3, 0.04);
       bullets[i--] = bullets[--numBullets];
       continue;
     }
@@ -678,6 +736,7 @@ void updateBullets(int diff) {
     if(!b->friendly) {
       if(pow(playerX-b->x, 2) + pow(playerY-b->y, 2) < 7*7) {
         hitPlayer();
+        sprayParticles(b->x, b->y, b->a, 0.4, 30, 1.0, 0, 0, 0.3);
         bullets[i--] = bullets[--numBullets];
       }
       continue;
@@ -691,6 +750,8 @@ void updateBullets(int diff) {
       if(pow(e->x-b->x, 2) + pow(e->y-b->y, 2) < 18*18) {
         //enemies[j--] = enemies[--numEnemies];
         hitEnemy(e);
+        sprayParticles(b->x, b->y, b->a+PI, 0.2, 8, 1.0, 0, 0, 0.2);
+        sprayParticles(b->x, b->y, b->a, 0.4, 16, 1.0, 0, 0, 0.2);
         addRing(b->x, b->y, 10, 40, RING_SPEED);
         bullets[i--] = bullets[--numBullets];
         printf("hit!\n");
@@ -718,6 +779,19 @@ void updateRings(int diff) {
   }
 }
 
+void updateParticles(int diff) {
+  for(int i = 0; i < numParticles; i++) {
+    if(particles[i].v > 0) {
+      particles[i].x += particles[i].xv*particles[i].v*diff;
+      particles[i].y += particles[i].yv*particles[i].v*diff;
+      particles[i].v -= PARTICLE_DECCELERATION*diff;
+    }
+
+    if(particles[i].y > NEAR_RANGE)
+      particles[i--] = particles[--numParticles];
+  }
+}
+
 void update(int diff) {
   if(paused)
     return;
@@ -727,6 +801,7 @@ void update(int diff) {
 
   updateBullets(diff);
   updateRings(diff);
+  updateParticles(diff);
 
   if(playerDead)
     return;
