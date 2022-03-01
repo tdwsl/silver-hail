@@ -10,6 +10,6 @@ $mingw-gcc \
 -lmingw32 -lSDL2main -lSDL2 -lopengl32 -lm -lSDL2_mixer \
 -o ../hail.exe
 
-cp $SDL2/$mingw/bin/SDL2.dll .
-cp $SDL2_mixer/$mingw/bin/SDL2_mixer.dll .
-cp $SDL2_mixer/$mingw/bin/libmpg123-0.dll .
+cp $SDL2/$mingw/bin/SDL2.dll ..
+cp $SDL2_mixer/$mingw/bin/SDL2_mixer.dll ..
+cp $SDL2_mixer/$mingw/bin/libmpg123-0.dll ..
