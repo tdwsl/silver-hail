@@ -329,8 +329,6 @@ void drawShape(const int *arr, int x, int y, float a) {
 }
 
 void drawMap() {
-  glColor3f(1.0, 1.0, 1.0);
-
   for(int i = 0; i < mapW*mapH; i++) {
     if(!map[i])
       continue;
@@ -370,7 +368,7 @@ void drawPlayer() {
   if(playerDead)
     glColor4f(0.4, 0.4, 0.4, 0.3);
   else
-    glColor3f(1.0, 1.0, 0.5);
+    glColor4f(1.0, 1.0, 0.5, 1.0);
   glBegin(GL_LINE_LOOP);
   drawShape(playerShape, playerX, playerY, a);
 }
@@ -401,7 +399,7 @@ void drawEnemy(struct enemy *e) {
     glColor4f(1.0-0.6*e->death, 1.0-0.6*e->death, 1.0-0.6*e->death,
         1.0-0.6*e->death);
   else
-    glColor3f(0.3, 0.3, 1.0);
+    glColor4f(0.3, 0.3, 1.0, 1.0);
   glBegin(GL_LINE_LOOP);
   drawShape(eshape1, e->x, e->y, a);
 
@@ -445,9 +443,9 @@ void drawBullet(struct bullet *b) {
   drawShape(bshape1, b->x, b->y, a);
 
   if(b->friendly)
-    glColor3f(1.0, 0.8, 0.7);
+    glColor4f(1.0, 0.8, 0.7, 1.0);
   else
-    glColor3f(0.8, 0.8, 1.0);
+    glColor4f(0.8, 0.8, 1.0, 1.0);
   glBegin(GL_LINE_LOOP);
   drawShape(bshape1, b->x, b->y, a);
 }
@@ -689,19 +687,6 @@ void updatePlayer(int diff) {
   if(playerDead)
     return;
 
-  /* check if player is crushed */
-  if(mapXYBlocks(playerX, playerY+mapScroll)) {
-    /*hitPlayer();
-    return;*/
-
-    /* smash wall, loud noise */
-    int x = playerX/32, y = (playerY+mapScroll)/32;
-    map[y*mapW+x] = 0;
-    addRing(playerX, playerY, 50, 1500, RING_SPEED*7);
-    Mix_PlayChannel(-1, sfxImpact2, 0);
-    sprayParticles(playerX, playerY, -PI/2, 0.3, 30, 0.8, 0.8, 0.8, 0.4);
-  }
-
   if((controlXV || controlYV) && !controlShooting) {
     directionXV = controlXV;
     directionYV = controlYV;
@@ -724,6 +709,19 @@ void updatePlayer(int diff) {
   if(playerY < 100) {
     addScore(100-playerY);
     scroll(100-playerY);
+  }
+
+  /* check if player is crushed */
+  if(mapXYBlocks(playerX, playerY+mapScroll) && playerY < 10) {
+    /*hitPlayer();
+    return;*/
+
+    /* smash wall, loud noise */
+    int x = playerX/32, y = (playerY+mapScroll)/32;
+    map[y*mapW+x] = 0;
+    addRing(playerX, playerY, 50, 1500, RING_SPEED*7);
+    Mix_PlayChannel(-1, sfxImpact2, 0);
+    sprayParticles(playerX, playerY, -PI/2, 0.3, 30, 0.8, 0.8, 0.8, 0.4);
   }
 
   /* handle shooting */
