@@ -4,8 +4,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
 
-#define sassert(C) assert(C)
-
 extern SDL_Window *window;
 
 extern Mix_Chunk *sfxShot1, *sfxShot2;

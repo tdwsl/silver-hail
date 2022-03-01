@@ -12,14 +12,13 @@ int currentTrack = 0;
 bool newTrack = false;
 
 void loadTrack(const char *filename) {
-  //printf("loading %s\n", filename);
-  sassert(tracks[numTracks++] = Mix_LoadMUS(filename));
+  tracks[numTracks++] = Mix_LoadMUS(filename);
+  if(!tracks[numTracks-1]) {
+    printf("%s%s\nloading %s failed\n", Mix_GetError(), SDL_GetError());
+  }
 }
 
 void nextTrack() {
-#ifdef NOSOUND
-  return;
-#endif
   currentTrack++;
   currentTrack %= numTracks;
 
@@ -27,9 +26,6 @@ void nextTrack() {
 }
 
 void loadMusic() {
-#ifdef NOSOUND
-  return;
-#endif
   loadTrack("music/track1.mp3");
   loadTrack("music/track2.mp3");
   loadTrack("music/track3.mp3");
@@ -42,9 +38,6 @@ void loadMusic() {
 }
 
 void updateMusic() {
-#ifdef NOSOUND
-  return;
-#endif
   if(newTrack) {
     Mix_PlayMusic(tracks[currentTrack], 0);
     Mix_HookMusicFinished(nextTrack);
@@ -58,9 +51,6 @@ void updateMusic() {
 }
 
 void toggleMute() {
-#ifdef NOSOUND
-  return;
-#endif
   mute = !mute;
 
   /*if(mute)

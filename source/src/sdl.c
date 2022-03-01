@@ -35,27 +35,24 @@ void initSDL() {
   const int init = SDL_INIT_VIDEO | SDL_INIT_AUDIO
       | SDL_INIT_TIMER | SDL_INIT_EVENTS;
 
-  sassert(SDL_Init(init) >= 0);
-  sassert(window = SDL_CreateWindow("Silver Hail",
+  assert(SDL_Init(init) >= 0);
+  assert(window = SDL_CreateWindow("Silver Hail",
       SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
       640, 480, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL));
 
   keyboardState = SDL_GetKeyboardState(NULL);
 
-#ifndef NOSOUND
   /* init mixer */
   const int mixFlags = MIX_INIT_MP3;
-  //sassert((Mix_Init(mixFlags)&mixFlags) == mixFlags);
-  sassert(Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT,
-      2, 4096) >= 0);
+  Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT,
+      2, 4096) >= 0;
 
   /* load sfx */
-  sassert(sfxShot1 = Mix_LoadWAV("sfx/shot1.wav"));
-  sassert(sfxShot2 = Mix_LoadWAV("sfx/shot2.wav"));
-  sassert(sfxImpact1 = Mix_LoadWAV("sfx/impact1.wav"));
-  sassert(sfxImpact2 = Mix_LoadWAV("sfx/impact2.wav"));
-  sassert(sfxImpact3 = Mix_LoadWAV("sfx/impact3.wav"));
-#endif
+  sfxShot1 = Mix_LoadWAV("sfx/shot1.wav");
+  sfxShot2 = Mix_LoadWAV("sfx/shot2.wav");
+  sfxImpact1 = Mix_LoadWAV("sfx/impact1.wav");
+  sfxImpact2 = Mix_LoadWAV("sfx/impact2.wav");
+  sfxImpact3 = Mix_LoadWAV("sfx/impact3.wav");
 
   /* init opengl */
   context = SDL_GL_CreateContext(window);
@@ -87,7 +84,6 @@ void toggleFullscreen() {
 }
 
 void endSDL() {
-#ifndef NOSOUND
   /* free music */
   for(int i = 0; i < numTracks; i++)
     Mix_FreeMusic(tracks[i]);
@@ -101,8 +97,6 @@ void endSDL() {
   Mix_FreeChunk(sfxShot1);
 
   Mix_CloseAudio();
-  //Mix_Quit();
-#endif
 
   SDL_DestroyWindow(window);
   SDL_Quit();

@@ -313,17 +313,17 @@ void addBullet(float x, float y, float a, float v, bool friendly) {
 }
 
 void drawRect(int x, int y, int w, int h) {
-    glVertex2i(x, y);
-    glVertex2i(x+w, y);
-    glVertex2i(x+w, y+h);
-    glVertex2i(x, y+h);
+    glVertex2f(x, y);
+    glVertex2f(x+w, y);
+    glVertex2f(x+w, y+h);
+    glVertex2f(x, y+h);
   glEnd();
 }
 
 void drawShape(const int *arr, int x, int y, float a) {
   int l = *(arr++);
   for(int i = 0; i < l; i++)
-    glVertex2i(x + arr[i*2]*cosf(a) + arr[i*2+1]*sinf(a),
+    glVertex2f(x + arr[i*2]*cosf(a) + arr[i*2+1]*sinf(a),
         y - (arr[i*2+1]*cosf(a) - arr[i*2]*sinf(a)));
   glEnd();
 }
@@ -413,7 +413,7 @@ void drawEnemy(struct enemy *e) {
   else
     glColor4f(0.8, 0.4, 0, 0.6);
   glBegin(GL_POLYGON);
-  glVertex2i(e->x+cosf(e->a)*10, e->y+sinf(e->a)*10);
+  glVertex2f(e->x+cosf(e->a)*10, e->y+sinf(e->a)*10);
   glColor4f(0.0, 0, 0, 0.0);
   drawShape(fovshape1, e->x, e->y, a);
 }
@@ -460,7 +460,7 @@ void drawRing(struct ring *r) {
   glColor4f(0.8, 0.8, 0.6, 0.5-p*0.5);
   glBegin(GL_LINE_LOOP);
   for(float a = 0; a < PI*2; a += 0.1)
-    glVertex2i(r->x+cosf(a)*r->r, r->y+sinf(a)*r->r);
+    glVertex2f(r->x+cosf(a)*r->r, r->y+sinf(a)*r->r);
   glEnd();
 }
 
@@ -790,7 +790,7 @@ void updateEnemy(struct enemy *e, int diff) {
       else {
         e->a += PI/4;
         moveXY(&e->x, &e->y, cosf(e->a)*speed*diff, sinf(e->a)*speed*diff);
-        if(e->x == ox && e->y == oy)
+        if(e->x == ox && e->y == oy && playerDead)
           e->alert = false;
       }
     }

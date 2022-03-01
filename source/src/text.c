@@ -127,14 +127,14 @@ void drawChar(char c, float x, float y, float w, float h, float a) {
   if(sym & LEFT_HI)
     drawBar(x, y+h*0.1, w*0.2, h*0.4, a);
   if(sym & MID_HI)
-    drawBar(x+w*0.45, y+h*0.1, w*0.2, h*0.4, a);
+    drawBar(x+w*0.4, y+h*0.1, w*0.2, h*0.4, a);
   if(sym & RIGHT_HI)
     drawBar(x+w*0.8, y+h*0.1, w*0.2, h*0.4, a);
 
   if(sym & LEFT_LO)
     drawBar(x, y+h*0.5, w*0.2, h*0.4, a);
   if(sym & MID_LO)
-    drawBar(x+w*0.45, y+h*0.5, w*0.2, h*0.4, a);
+    drawBar(x+w*0.4, y+h*0.5, w*0.2, h*0.4, a);
   if(sym & RIGHT_LO)
     drawBar(x+w*0.8, y+h*0.5, w*0.2, h*0.4, a);
 
