@@ -1,6 +1,8 @@
 # silver-hail
 top-down scrolling shooter with light stealth elements
 
+![screenshot](https://raw.githubusercontent.com/tdwsl/silver-hail/main/screenshot.png)
+
 ABOUT
 
 Silver Hail is a top-down shooter with light stealth elements, written using
