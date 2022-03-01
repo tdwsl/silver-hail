@@ -205,8 +205,6 @@ void addScore(int s) {
 }
 
 void reset() {
-  lastScore = score;
-
   paused = false;
   playerX = 320;
   playerY = 440;
@@ -666,6 +664,9 @@ void hitPlayer() {
   /* all enemies gather round */
   for(int i = 0; i < numEnemies; i++)
     enemies[i].alert = true;
+
+  lastScore = score;
+  saveScore();
 }
 
 void hitEnemy(struct enemy *e) {
@@ -1031,6 +1032,9 @@ int main(int argc, char **args) {
             break;
         case SDLK_F11:
           toggleFullscreen();
+          break;
+        case SDLK_ESCAPE:
+          quit = true;
           break;
         }
         break;
