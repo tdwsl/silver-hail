@@ -14,7 +14,7 @@ bool newTrack = false;
 void loadTrack(const char *filename) {
   tracks[numTracks++] = Mix_LoadMUS(filename);
   if(!tracks[numTracks-1]) {
-    printf("%s%s\nloading %s failed\n", Mix_GetError(), SDL_GetError());
+    printf("loading %s failed:\n  %s\n", filename, SDL_GetError());
   }
 }
 

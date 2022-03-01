@@ -44,6 +44,7 @@ void initSDL() {
 
   /* init mixer */
   const int mixFlags = MIX_INIT_MP3;
+  Mix_Init(mixFlags);
   Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT,
       2, 4096) >= 0;
 
@@ -98,6 +99,7 @@ void endSDL() {
 
   Mix_CloseAudio();
 
+  Mix_Quit();
   SDL_DestroyWindow(window);
   SDL_Quit();
 }
