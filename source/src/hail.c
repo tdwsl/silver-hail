@@ -90,7 +90,6 @@ bool paused = false;
 int difficulty = 1;
 int score = 0;
 int highScore = 0;
-int lastScore = 0;
 
 void generateMap() {
   mapW = 20;
@@ -179,13 +178,11 @@ void generateMap() {
 void loadScore() {
   FILE *fp = fopen("score.txt", "r");
   if(!fp) {
-    lastScore = 0;
     highScore = 0;
     return;
   }
 
   fscanf(fp, "%d", &highScore);
-  fscanf(fp, "%d", &lastScore);
 
   fclose(fp);
 }
@@ -193,7 +190,7 @@ void loadScore() {
 void saveScore() {
   FILE *fp;
   assert(fp = fopen("score.txt", "w"));
-  fprintf(fp, "%d\n%d\n", highScore, lastScore);
+  fprintf(fp, "%d\n", highScore);
 }
 
 void addScore(int s) {
@@ -663,7 +660,6 @@ void hitPlayer() {
   for(int i = 0; i < numEnemies; i++)
     enemies[i].alert = true;
 
-  lastScore = score;
   saveScore();
 }
 
