@@ -191,6 +191,7 @@ void saveScore() {
   FILE *fp;
   assert(fp = fopen("score.txt", "w"));
   fprintf(fp, "%d\n", highScore);
+  fclose(fp);
 }
 
 void addScore(int s) {
