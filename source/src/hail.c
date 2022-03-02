@@ -709,7 +709,7 @@ void updatePlayer(int diff) {
   }
 
   /* check if player is crushed */
-  if(mapXYBlocks(playerX, playerY+mapScroll) && playerY < 10) {
+  if(mapXYBlocks(playerX, playerY+mapScroll) && playerY > 480-10) {
     /*hitPlayer();
     return;*/
 
