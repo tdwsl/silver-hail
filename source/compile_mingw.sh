@@ -1,4 +1,4 @@
-SDL2=~/SDL2-2.0.20
+SDL2=~/SDL2-2.0.22
 SDL2_mixer=~/SDL2_mixer-2.0.4
 mingw=i686-w64-mingw32
 
