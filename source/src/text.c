@@ -17,6 +17,7 @@ enum {
   LO_R=4096,
   MID_HI=8192,
   MID_LO=16384,
+  ACR_R2L=32768,
 };
 
 unsigned int alphabet[] = {
@@ -45,7 +46,7 @@ unsigned int alphabet[] = {
   LEFT_HI|LEFT_LO|LO_L|LO_R|MID_HI|MID_LO|RIGHT_HI|RIGHT_LO,	// w
   LEFT_LO | RIGHT_LO | MID_L | MID_R | MID_HI | RIGHT_HI,	// x
   LEFT_HI | RIGHT_HI | MID_L | MID_R | MID_LO,			// y
-  LEFT_LO | RIGHT_HI | HI | MID | LO,				// z
+  HI | LO | ACR_R2L,						// z
 };
 
 unsigned int numbers[] = {
@@ -106,6 +107,27 @@ void drawBar(float x, float y, float w, float h, float a) {
     drawHbar_p(x, y, w, h);
 }
 
+void drawAcr_p(float x, float y, float w, float h) {
+  glVertex2i(x, y);
+  glVertex2i(x+w*0.15, y);
+  glVertex2i(x+w, y+h*0.85);
+  glVertex2i(x+w, y+h);
+  glVertex2i(x+w*0.85, y+h);
+  glVertex2i(x, y+h*0.15);
+}
+
+void drawAcr(float x, float y, float w, float h, float a) {
+  glColor4f(0.7, 0.7, 0.9, 0.4*a);
+  glBegin(GL_POLYGON);
+  drawAcr_p(x, y, w, h);
+  glEnd();
+
+  glColor4f(0.8, 0.8, 1.0, 1.0*a);
+  glBegin(GL_LINE_LOOP);
+  drawAcr_p(x, y, w, h);
+  glEnd();
+}
+
 void drawChar(char c, float x, float y, float w, float h, float a) {
   unsigned int sym;
   if(c >= 'A' && c <= 'Z')
@@ -151,6 +173,9 @@ void drawChar(char c, float x, float y, float w, float h, float a) {
     drawBar(x+w*0.5, y+h*0.45, w*0.3, h*0.1, a);
   if(sym & LO_R)
     drawBar(x+w*0.5, y+h*0.9, w*0.3, h*0.1, a);
+
+  if(sym & ACR_R2L)
+    drawAcr(x+w*0.8, y+h*0.2, -w*0.6, h*0.6, a);
 }
 
 void drawText(const char *text, float x, float y,
